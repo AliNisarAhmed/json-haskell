@@ -1,6 +1,7 @@
 module Main where
 
-import Control.Applicative
+import Control.Applicative (Alternative(..))
+import Data.Char (isDigit)
 
 main :: IO ()
 main = undefined
@@ -37,6 +38,11 @@ instance Alternative Parser where
   (<|>) (Parser p1) (Parser p2) =
     Parser (\s -> p1 s <|> p2 s)
 
+
+-------------------------------------------
+
+-- Parsers -- 
+
 charP :: Char -> Parser Char
 charP c = Parser f
   where
@@ -53,10 +59,22 @@ jsonNull = const JsonNull <$> stringP "null"
 
 jsonBool :: Parser JsonValue
 jsonBool = convertToBool <$> (stringP "true" <|> stringP "false")
-  where 
-    convertToBool "true" = JsonBool True 
+  where
+    convertToBool "true" = JsonBool True
     convertToBool "false" = JsonBool False
 
+-- based on the function span in std lib
+spanP :: (Char -> Bool) -> Parser [Char]
+spanP f =
+  Parser $ \s ->
+    let (token, rest) = span f s
+    in Just (rest, token)
+
+jsonNumber :: Parser JsonValue
+jsonNumber = (JsonNumber . readNumber) <$> spanP isDigit
+
+readNumber :: String -> Integer
+readNumber = read
 
 -- The final whole JSON value parser
 jsonValue :: Parser JsonValue
